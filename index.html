@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GreenPath - Trắc Nghiệm Holland</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link
+        href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@800&family=Be+Vietnam+Pro:wght@400;500;700;800&display=swap"
+        rel="stylesheet">
+    <!-- React & ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <style>
+        body {
+            font-family: 'Be Vietnam Pro', sans-serif;
+            background: #F7FDF9;
+            -webkit-font-smoothing: antialiased;
+            margin: 0;
+        }
+
+        h1,
+        h2,
+        h3,
+        h4,
+        span,
+        label,
+        button {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+
+        .custom-scroll::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .custom-scroll::-webkit-scrollbar-thumb {
+            background: #22C55E20;
+            border-radius: 10px;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .animate-fade-in {
+            animation: fadeIn 0.8s ease-out forwards;
+        }
+
+        input::placeholder {
+            font-weight: normal;
+            opacity: 0.5;
+            font-size: 13px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="root"></div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, onSnapshot, serverTimestamp, doc, deleteDoc, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyASU_uF-zIpRzgYnj5TOF69EmthoowmAsI",
+            authDomain: "xanhlaa-21ebd.firebaseapp.com",
+            projectId: "xanhlaa-21ebd",
+            storageBucket: "xanhlaa-21ebd.firebasestorage.app",
+            messagingSenderId: "223760078733",
+            appId: "1:223760078733:web:b9d77eab6ede481fb40fc4"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        const appId = 'greenpath-holland-v2';
+
+        window.fb = { db, auth, collection, addDoc, onSnapshot, serverTimestamp, doc, deleteDoc, signInAnonymously, onAuthStateChanged, appId, query };
+    </script>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
+
+        const GreenPathLogo = ({ size = 24, className = "" }) => (
+            <svg width={size} height={size} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+                <path d="M50 90C50 90 45 70 45 50C45 30 55 20 55 10" stroke="currentColor" strokeWidth="8" strokeLinecap="round" />
+                <path d="M45 55C45 55 15 50 15 35C15 20 35 25 45 45" fill="currentColor" className="opacity-90" />
+                <path d="M52 40C52 40 85 35 85 20C85 5 65 10 52 30" fill="currentColor" />
+                <circle cx="50" cy="90" r="5" fill="currentColor" />
+            </svg>
+        );
+
+        const Icon = ({ name, size = 20, className = "" }) => {
+            const icons = {
+                lock: <React.Fragment><rect width="18" height="11" x="3" y="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></React.Fragment>,
+                sparkles: <path d="m12 3 1.912 5.813a2 2 0 0 0 1.275 1.275L21 12l-5.813 1.912a2 2 0 0 0-1.275 1.275L12 21l-1.912-5.813a2 2 0 0 0-1.275-1.275L3 12l5.813-1.912a2 2 0 0 0 1.275-1.275L12 3Z" />,
+                user: <React.Fragment><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></React.Fragment>,
+                phone: <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />,
+                school: <React.Fragment><path d="m12 3 10 5-10 5-10-5z" /><path d="M6 10v6c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2v-6" /></React.Fragment>,
+                hash: <React.Fragment><line x1="4" y1="9" x2="20" y2="9" /><line x1="4" y1="15" x2="20" y2="15" /><line x1="10" y1="3" x2="8" y2="21" /><line x1="16" y1="3" x2="14" y2="21" /></React.Fragment>,
+                clock: <React.Fragment><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></React.Fragment>,
+                info: <React.Fragment><circle cx="12" cy="12" r="10" /><path d="M12 16v-4" /><path d="M12 8h.01" /></React.Fragment>,
+                "arrow-right": <React.Fragment><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></React.Fragment>,
+                "chevron-right": <path d="m9 18 6-6-6-6" />,
+                "message-circle": <path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z" />,
+                "external-link": <React.Fragment><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 22 3 22 10" /><line x1="14" y1="10" x2="22" y2="3" /></React.Fragment>,
+                search: <React.Fragment><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></React.Fragment>,
+                "log-out": <React.Fragment><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="3" /></React.Fragment>,
+                "trash-2": <React.Fragment><path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" /><line x1="10" y1="11" x2="10" y2="17" /><line x1="14" y1="11" x2="14" y2="17" /></React.Fragment>
+            };
+            return (
+                <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                    {icons[name] || null}
+                </svg>
+            );
+        };
+
+        const ADMIN_PIN = "XanhLaGreenPath200502";
+
+        const HOLLAND_DATA = {
+            R: {
+                title: "Nhóm Kỹ thuật (Realistic - R)",
+                desc: "Thích làm việc với các vật thể, máy móc, dụng cụ, cây cối, con vật hoặc các hoạt động ngoài trời.",
+                questions: [
+                    "Tự mua và lắp ráp máy vi tính theo ý mình",
+                    "Lắp ráp tủ theo hướng dẫn của sách hướng dẫn hoặc trang mạng",
+                    "Trang điểm cho mình hay cho bạn theo hướng dẫn của sách hướng dẫn hoặc trang mạng",
+                    "Cắt tỉa cây cảnh",
+                    "Tháo mở điện thoại di động hay máy tính ra để tìm hiểu",
+                    "Tham gia một chuyến du lịch thám hiểm (như khám phá hang động, núi rừng)",
+                    "Chăm sóc vật nuôi",
+                    "Sửa xe, như xe đạp, xe máy (các lỗi nhỏ)",
+                    "Làm đồ nội thất",
+                    "Lắp ráp máy vi tính",
+                    "Leo núi",
+                    "Đóng gói đồ đạc vào thùng",
+                    "Chơi một môn thể thao",
+                    "Tham gia chuyến đạp xe xuyên quốc gia (từ TPHCM ra Hà Nội, từ Hà Nội vào TPHCM)"
+                ]
+            },
+            I: {
+                title: "Nhóm Nghiên cứu (Investigative - I)",
+                desc: "Thích tìm tòi, quan sát, học hỏi, phân tích, đánh giá hoặc giải quyết vấn đề.",
+                questions: [
+                    "Tham quan bảo tàng",
+                    "Tìm hiểu sự hình thành của các vì sao và vũ trụ",
+                    "Tìm hiểu về văn hóa một quốc gia mà mình thích",
+                    "Tìm hiểu về tâm lý con người",
+                    "Đọc một cuốn sách về tương lai của loài người trong một triệu năm nữa",
+                    "Đọc sách, báo hay xem trang tin tức về khoa học",
+                    "Tìm hiểu về cảm xúc con người",
+                    "Được xem một ca mổ tim",
+                    "Tìm hiểu nguồn gốc của một dịch bệnh, nguồn gốc loài người, v.v",
+                    "Đọc các bài báo về ảnh hưởng của AI (trí tuệ nhân tạo) lên nghề nghiệp tương lai",
+                    "Tìm hiểu về thế giới động vật (qua các kênh tìm hiểu khoa học)",
+                    "Phát minh xe điện",
+                    "Tiến hành thí nghiệm hóa học",
+                    "Nghiên cứu về chế độ dinh dưỡng"
+                ]
+            },
+            A: {
+                title: "Nhóm Nghệ thuật (Artistic – A)",
+                desc: "Có khả năng nghệ thuật, sáng tạo, trực giác và thích làm việc ngẫu hứng.",
+                questions: [
+                    "Tạo ra một tác phẩm nghệ thuật, tranh, câu chuyện",
+                    "Viết truyện ngắn",
+                    "Chứng tỏ năng lực nghệ thuật của bản thân với người khác",
+                    "Chơi trong một ban nhạc",
+                    "Chỉnh sửa phim",
+                    "Thuyết trình hoặc thiết kế, theo ý tưởng của mình",
+                    "Vẽ phim hoạt hình",
+                    "Hát trong một ban nhạc",
+                    "Biểu diễn nhảy hiện đại",
+                    "Dẫn chương trình (MC) cho một sự kiện",
+                    "Độc thoại hay kể chuyện trên đài phát thanh/phần mềm",
+                    "Viết kịch bản cho phim hoặc chương trình truyền hình",
+                    "Chụp ảnh cho các sự kiện trong cuộc sống hoặc sự kiện nghệ thuật",
+                    "Viết một bài phê bình phim cho bộ phim mình thích/ghét nhất"
+                ]
+            },
+            S: {
+                title: "Nhóm Xã hội (Social – S)",
+                desc: "Thích làm việc với con người để khai sáng, giúp đỡ, huấn luyện.",
+                questions: [
+                    "Giúp người khác chọn nghề nghiệp phù hợp",
+                    "Kết nối hai người bạn với nhau",
+                    "Dạy cho bạn mình cách giảm cân qua ăn uống đúng cách",
+                    "Tham gia ngày trái đất bằng cách lượm rác hay tắt điện",
+                    "Hướng dẫn khách nước ngoài chỗ ăn ngon",
+                    "Cứu động vật bị bỏ rơi ngoài đường",
+                    "Tham gia vào một cuộc thảo luận nhóm nhỏ",
+                    "Kể chuyện cười cho bạn bè nghe",
+                    "Dạy em nhỏ chơi một trò chơi hay một môn thể thao",
+                    "Lắng nghe bạn bè tâm sự về vấn đề cá nhân của họ",
+                    "Giúp bạn bè giải quyết vấn đề liên quan đến tình yêu",
+                    "Tham gia một chuyến đi từ thiện",
+                    "Giúp một dự án cộng đồng trong sức của mình",
+                    "Sẵn sàng giúp thầy cô, bạn bè khi thấy họ cần"
+                ]
+            },
+            E: {
+                title: "Nhóm Quản lý (Enterprising – E)",
+                desc: "Thích lãnh đạo và thuyết phục người khác.",
+                questions: [
+                    "Tham gia ban đại diện học sinh ở trường",
+                    "Làm cán bộ lớp",
+                    "Bán hàng trực tuyến",
+                    "Quản lý một cửa hàng trực tuyến",
+                    "Học về thị trường chứng khoán (bitcoin, cổ phiếu, tiền tệ, v.v.)",
+                    "Tham gia một khóa học về quản lý tài chính",
+                    "Tham dự một trại huấn luyện kỹ năng lãnh đạo dành cho lứa tuổi thanh thiếu niên",
+                    "Lập kế hoạch làm việc cho thành viên nhóm",
+                    "Kiếm tiền bằng cách kinh doanh trực tuyến",
+                    "Nói trước đám đông về một đề tài mình thích",
+                    "Tham gia xây dựng các luật lệ mới cho lớp/trường",
+                    "Thuyết phục cha mẹ theo ý mình",
+                    "Tổ chức đi chơi cho một nhóm bạn",
+                    "Kiếm tiền bằng cách làm thêm"
+                ]
+            },
+            C: {
+                title: "Nhóm Nghiệp vụ (Conventional – C)",
+                desc: "Thích làm việc với dữ liệu, con số và sự ngănắp.",
+                questions: [
+                    "Mở tài khoản tiết kiệm",
+                    "Lập kế hoạch chi tiêu hàng tháng",
+                    "Chuẩn bị ngân sách cho chuyến đi chơi tập thể lớp",
+                    "Chuẩn bị cho buổi trình bày trước lớp",
+                    "Lập kế hoạch cho kỳ nghỉ hè/Tết",
+                    "Đếm và sắp xếp tiền",
+                    "Sắp xếp lại bàn học",
+                    "Viết kế hoạch học tập cho học kỳ mới",
+                    "Hoàn tất bài tập theo đúng hạn được giao",
+                    "Dò lỗi chính tả cho phụ đề của một phim ưa thích",
+                    "Học một khóa vi tính văn phòng",
+                    "Làm thủ quỹ cho lớp",
+                    "Sắp xếp lại tủ quần áo cá nhân",
+                    "Giúp ba/mẹ quản lý tiền chợ của gia đình"
+                ]
+            }
+        };
+
+        const LIKERT = [{ v: 1, l: "Rất không thích" }, { v: 2, l: "Không thích" }, { v: 3, l: "Bình thường" }, { v: 4, l: "Thích" }, { v: 5, l: "Rất thích" }];
+        const TIME_SLOTS = ["Sáng (8h-11h)", "Chiều (14h-17h)", "Tối (19h-21h)"];
+        const ZALO_LINK = "https://zalo.me/g/kgaz21kzqwoogpjb0rgo";
+
+        function App() {
+            const [view, setView] = useState('home');
+            const [user, setUser] = useState(null);
+            const [loading, setLoading] = useState(false);
+            const [formData, setFormData] = useState({ name: '', phone: '', school: '', grade: '', time: '' });
+            const [answers, setAnswers] = useState({});
+            const [groupIdx, setGroupIdx] = useState(0);
+            const [showAdminLogin, setShowAdminLogin] = useState(false);
+            const [pin, setPin] = useState("");
+            const [data, setData] = useState([]);
+            const [searchTerm, setSearchTerm] = useState("");
+
+            const groups = ['R', 'I', 'A', 'S', 'E', 'C'];
+            const activeKey = groups[groupIdx];
+
+            useEffect(() => {
+                const initAuth = async () => {
+                    if (window.fb) {
+                        try {
+                            await window.fb.signInAnonymously(window.fb.auth);
+                            window.fb.onAuthStateChanged(window.fb.auth, setUser);
+                        } catch (e) { console.error("Auth Error", e); }
+                    }
+                };
+                initAuth();
+            }, []);
+
+            useEffect(() => {
+                if (view === 'admin' && user && window.fb) {
+                    const registrationsRef = window.fb.collection(window.fb.db, 'artifacts', window.fb.appId, 'public', 'data', 'registrations');
+                    const unsub = window.fb.onSnapshot(registrationsRef, (snap) => {
+                        const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                        setData(docs.sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0)));
+                    }, (err) => console.error(err));
+                    return () => unsub();
+                }
+            }, [view, user]);
+
+            const scores = useMemo(() => {
+                const s = { R: 0, I: 0, A: 0, S: 0, E: 0, C: 0 };
+                Object.entries(answers).forEach(([key, val]) => {
+                    const g = key.split('_')[0];
+                    if (s.hasOwnProperty(g)) s[g] += val;
+                });
+                return s;
+            }, [answers]);
+
+            const submitFinal = async () => {
+                setLoading(true);
+                try {
+                    // Lưu dữ liệu lên Firebase
+                    if (window.fb && user) {
+                        const ref = window.fb.collection(window.fb.db, 'artifacts', window.fb.appId, 'public', 'data', 'registrations');
+                        await window.fb.addDoc(ref, {
+                            ...formData,
+                            scores,
+                            timestamp: window.fb.serverTimestamp()
+                        });
+                    }
+
+                    // Lưu dữ liệu lên Google Sheets
+                    await fetch("https://script.google.com/macros/s/AKfycby_yRg-aiLUFBRu-6IoiqKloWMkcw5UV89sNt6JkZ8snmgXc0wX9dyBJ0SY5M1u6bRdFg/exec", {
+                        method: "POST",
+                        headers: { "Content-Type": "text/plain;charset=utf-8" },
+                        body: JSON.stringify({ ...formData, scores })
+                    }).catch(console.error);
+
+                    setView('result');
+                } catch (e) {
+                    console.error("Submit Error", e);
+                    alert("Có lỗi xảy ra khi lưu kết quả. Vui lòng kiểm tra kết nối mạng.");
+                    setView('result'); // Vẫn cho phép xem kết quả dù lưu lỗi
+                }
+                setLoading(false);
+            };
+
+            const isFormValid = formData.name.trim().length > 2 &&
+                formData.phone.length >= 10 &&
+                formData.school.trim().length > 2 &&
+                formData.grade.trim().length > 0 &&
+                formData.time !== '';
+
+            const Header = () => (
+                <header className="w-full bg-white/90 backdrop-blur-md sticky top-0 z-[60] px-6 py-4 flex justify-between items-center border-b border-green-50 shadow-sm">
+                    <div className="flex items-center gap-3 cursor-pointer" onClick={() => setView('home')}>
+                        <div className="w-10 h-10 bg-green-500 rounded-xl flex items-center justify-center text-white shadow-lg shadow-green-200">
+                            <GreenPathLogo size={28} />
+                        </div>
+                        <div className="flex flex-col text-left">
+                            <span className="text-xl font-black text-green-700 leading-none tracking-tight">GreenPath</span>
+                            <span className="text-[9px] font-bold text-green-500 tracking-widest uppercase mt-1">Vườn ươm hướng nghiệp</span>
+                        </div>
+                    </div>
+                    <button onClick={() => setShowAdminLogin(true)} className="p-2 text-green-50 hover:text-green-500 transition-colors">
+                        <Icon name="lock" size={18} />
+                    </button>
+                </header>
+            );
+
+            const AdminLoginModal = () => !showAdminLogin ? null : (
+                <div className="fixed inset-0 z-[100] bg-green-900/40 backdrop-blur-md flex items-center justify-center p-6">
+                    <div className="bg-white p-10 rounded-[3rem] shadow-2xl max-w-sm w-full text-center animate-fade-in">
+                        <h3 className="text-2xl font-black text-green-700 mb-8">Admin Login</h3>
+                        <input type="password" autoFocus className="w-full p-5 bg-gray-50 border-none rounded-2xl text-center font-black text-2xl tracking-[0.5em] outline-none mb-8" value={pin} onChange={e => setPin(e.target.value)} />
+                        <div className="flex gap-4">
+                            <button onClick={() => { setShowAdminLogin(false); setPin(""); }} className="flex-1 py-4 font-black text-gray-400">Đóng</button>
+                            <button onClick={() => { if (pin === ADMIN_PIN) { setView('admin'); setShowAdminLogin(false); setPin(""); } else alert("Sai PIN"); }} className="flex-1 py-4 bg-green-500 text-white rounded-2xl font-black">Xác nhận</button>
+                        </div>
+                    </div>
+                </div>
+            );
+
+            const renderContent = () => {
+                switch (view) {
+                    case 'home':
+                        return (
+                            <main className="flex-1 flex flex-col items-center justify-center p-6 text-center max-w-5xl mx-auto w-full animate-fade-in">
+                                <div className="inline-flex items-center gap-2 px-6 py-2.5 bg-green-100/50 text-green-600 rounded-full text-xs font-bold mb-10 border border-green-200">
+                                    <Icon name="sparkles" size={14} className="text-green-500" />
+                                    Dự án phi lợi nhuận dành cho học sinh Việt Nam
+                                </div>
+                                <div className="w-28 h-28 bg-green-50 rounded-[2.5rem] flex items-center justify-center text-green-500 mb-8 shadow-inner border border-green-100">
+                                    <GreenPathLogo size={64} />
+                                </div>
+                                <h1 className="text-6xl md:text-8xl font-black text-green-600 mb-8 tracking-tighter leading-[0.85]">GreenPath</h1>
+                                <p className="text-green-800 text-lg md:text-xl font-bold max-w-2xl leading-relaxed italic opacity-90">
+                                    "Nền tảng hỗ trợ học sinh Việt Nam thấu hiểu năng lực bản thân, khám phá nghề nghiệp và kiến tạo tương lai hoàn toàn miễn phí."
+                                </p>
+                                <div className="mt-14 flex flex-col items-center gap-6">
+                                    <button onClick={() => setView('register')} className="group bg-green-500 text-white px-12 py-5 rounded-full font-black text-xl shadow-2xl shadow-green-200 hover:bg-green-600 hover:scale-105 active:scale-95 transition-all flex items-center gap-3">
+                                        Bắt đầu ngay <Icon name="arrow-right" className="group-hover:translate-x-1 transition-transform" />
+                                    </button>
+                                </div>
+                            </main>
+                        );
+                    case 'register':
+                        return (
+                            <div className="flex-1 flex items-center justify-center p-4 animate-fade-in">
+                                <div className="bg-white w-full max-w-md p-8 rounded-[2.5rem] shadow-xl border border-green-50">
+                                    <h2 className="text-2xl font-black text-green-700 tracking-tight mb-6">Thông tin đăng ký</h2>
+                                    <div className="space-y-4 text-left">
+                                        <div className="space-y-1.5">
+                                            <label className="flex items-center gap-2 text-[10px] font-black text-green-400 uppercase tracking-widest ml-1"><Icon name="user" size={12} /> Họ và tên</label>
+                                            <input className="w-full px-5 py-3 bg-gray-50 border-2 border-transparent rounded-xl font-bold text-green-800 text-sm outline-none focus:border-green-400 transition-all" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} />
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <label className="flex items-center gap-2 text-[10px] font-black text-green-400 uppercase tracking-widest ml-1"><Icon name="phone" size={12} /> Số điện thoại</label>
+                                            <input className="w-full px-5 py-3 bg-gray-50 border-2 border-transparent rounded-xl font-bold text-green-800 text-sm outline-none focus:border-green-400 transition-all" maxLength={10} value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value.replace(/\D/g, "") })} />
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-1.5">
+                                                <label className="flex items-center gap-2 text-[10px] font-black text-green-400 uppercase tracking-widest ml-1"><Icon name="school" size={12} /> Trường học</label>
+                                                <input className="w-full px-5 py-3 bg-gray-50 border-2 border-transparent rounded-xl font-bold text-green-800 text-sm outline-none focus:border-green-400 transition-all" value={formData.school} onChange={e => setFormData({ ...formData, school: e.target.value })} />
+                                            </div>
+                                            <div className="space-y-1.5">
+                                                <label className="flex items-center gap-2 text-[10px] font-black text-green-400 uppercase tracking-widest ml-1"><Icon name="hash" size={12} /> Lớp</label>
+                                                <input className="w-full px-5 py-3 bg-gray-50 border-2 border-transparent rounded-xl font-bold text-green-800 text-sm outline-none focus:border-green-400 transition-all" value={formData.grade} onChange={e => setFormData({ ...formData, grade: e.target.value })} />
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="flex items-center gap-2 text-[10px] font-black text-green-400 uppercase tracking-widest ml-1"><Icon name="clock" size={12} /> Thời gian tư vấn phù hợp</label>
+                                            <div className="grid grid-cols-3 gap-2">
+                                                {TIME_SLOTS.map(t => (
+                                                    <button key={t} onClick={() => setFormData({ ...formData, time: t })} className={`py-3 rounded-xl font-bold text-[9px] transition-all border-2 ${formData.time === t ? 'bg-green-500 border-green-500 text-white shadow-md' : 'bg-gray-50 border-transparent text-gray-400 hover:bg-green-50'}`}>{t}</button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <button disabled={!isFormValid} onClick={() => setView('intro')} className="w-full mt-6 py-4 bg-green-500 text-white rounded-full font-black text-base shadow-lg disabled:opacity-20 transition-all flex items-center justify-center gap-2">Tiếp theo <Icon name="chevron-right" /></button>
+                                </div>
+                            </div>
+                        );
+                    case 'intro':
+                        return (
+                            <div className="flex-1 p-4 md:p-8 animate-fade-in custom-scroll overflow-y-auto">
+                                <div className="max-w-3xl mx-auto bg-white rounded-[3rem] shadow-xl border border-green-50 p-8 md:p-10 text-left">
+                                    <div className="flex items-center gap-4 mb-6 text-green-600">
+                                        <Icon name="info" size={32} />
+                                        <h2 className="text-2xl font-black tracking-tight uppercase">GIỚI THIỆU TRẮC NGHIỆM</h2>
+                                    </div>
+                                    <div className="space-y-6">
+                                        <p className="text-green-900 font-bold leading-relaxed">Dành cho học sinh thấu hiểu bản thân thông qua 6 nhóm nghề nghiệp Holland.</p>
+                                        <ul className="space-y-3 font-bold text-green-900 text-sm">
+                                            <li className="flex gap-3"><div className="mt-1.5 w-1.5 h-1.5 rounded-full bg-green-500 shrink-0" /><span>Chọn mức độ từ 1 đến 5 cho mỗi câu hỏi.</span></li>
+                                            <li className="flex gap-3"><div className="mt-1.5 w-1.5 h-1.5 rounded-full bg-green-500 shrink-0" /><span>Trả lời trung thực theo cảm nhận cá nhân.</span></li>
+                                        </ul>
+                                    </div>
+                                    <button onClick={() => setView('test')} className="w-full mt-10 py-5 bg-green-500 text-white rounded-full font-black text-lg shadow-xl hover:bg-green-600 transition-all flex items-center justify-center gap-2">Bắt đầu <Icon name="arrow-right" /></button>
+                                </div>
+                            </div>
+                        );
+                    case 'test':
+                        const group = HOLLAND_DATA[activeKey];
+                        const progress = ((groupIdx + 1) / groups.length) * 100;
+
+                        return (
+                            <div className="flex-1 flex flex-col animate-fade-in">
+                                <div className="sticky top-[73px] z-[50] bg-[#F7FDF9]/95 backdrop-blur-sm p-6">
+                                    <div className="w-full max-w-3xl mx-auto bg-white p-6 rounded-[2.5rem] shadow-md border border-green-50 text-left">
+                                        <h3 className="text-2xl font-black text-green-700 tracking-tight">{group.title}</h3>
+                                        <div className="h-2.5 w-full bg-green-50 rounded-full overflow-hidden mt-4"><div className="h-full bg-green-500 transition-all" style={{ width: `${progress}%` }}></div></div>
+                                    </div>
+                                </div>
+                                <div className="flex-1 flex flex-col items-center px-6 pb-24 space-y-6 pt-6 overflow-y-auto">
+                                    {group.questions.map((q, i) => {
+                                        const aid = `${activeKey}_${i}`;
+                                        return (
+                                            <div key={aid} className="w-full max-w-3xl bg-white p-8 rounded-[2.5rem] border border-green-50 shadow-sm text-left">
+                                                <p className="text-lg font-bold text-green-800 mb-6 leading-tight">{i + 1}. {q}</p>
+                                                <div className="grid grid-cols-5 gap-2">
+                                                    {LIKERT.map(l => (
+                                                        <button key={l.v} onClick={() => setAnswers(prev => ({ ...prev, [aid]: l.v }))} className={`py-4 rounded-2xl border-2 font-black text-[9px] flex flex-col items-center gap-1 transition-all ${answers[aid] === l.v ? 'bg-green-500 border-green-500 text-white shadow-lg' : 'bg-gray-50 border-transparent text-gray-300'}`}>
+                                                            <span className="text-xs">{l.v}</span><span className="uppercase text-center leading-none">{l.l}</span>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                    <div className="w-full max-w-3xl flex gap-4 pt-8 pb-10">
+                                        {groupIdx > 0 && <button onClick={() => setGroupIdx(v => v - 1)} className="flex-1 py-5 bg-white border-2 border-green-100 text-green-500 rounded-full font-black text-lg">Quay lại</button>}
+                                        <button
+                                            disabled={loading}
+                                            onClick={() => {
+                                                if (groupIdx < 5) {
+                                                    setGroupIdx(v => v + 1);
+                                                    window.scrollTo(0, 0);
+                                                } else {
+                                                    submitFinal();
+                                                }
+                                            }}
+                                            className="flex-[2] py-5 bg-green-500 text-white rounded-full font-black text-lg shadow-xl disabled:opacity-20 transition-all"
+                                        >
+                                            {loading ? 'Đang lưu...' : (groupIdx < 5 ? 'Tiếp tục' : 'Hoàn tất')}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    case 'result':
+                        const sortedScores = Object.entries(scores).sort((a, b) => b[1] - a[1]);
+                        return (
+                            <div className="flex-1 p-6 md:p-12 animate-fade-in max-w-4xl mx-auto w-full space-y-8 pb-20">
+                                <div className="bg-green-600 text-white p-10 rounded-[3rem] shadow-2xl text-center"><h2 className="text-4xl font-black mb-2">Kết Quả Holland</h2><p className="opacity-80 uppercase tracking-widest text-xs font-bold">{formData.name}</p></div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    {sortedScores.map(([key, score], idx) => (
+                                        <div key={key} className={`p-8 bg-white rounded-[2.5rem] border-2 text-left ${idx === 0 ? 'border-green-500 shadow-xl scale-105' : 'border-green-50 shadow-sm'}`}>
+                                            <div className="flex justify-between items-start mb-4"><span className={`text-[10px] font-black px-3 py-1 rounded-full ${idx === 0 ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-400'}`}>Hạng {idx + 1}</span><span className="text-2xl font-black text-green-600">{score}đ</span></div>
+                                            <h4 className="text-xl font-black text-green-700">{HOLLAND_DATA[key].title}</h4>
+                                            <p className="text-sm font-bold text-gray-600 mt-4 leading-relaxed italic">{HOLLAND_DATA[key].desc}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                                <div className="bg-white p-10 rounded-[3rem] border border-green-100 shadow-xl text-center">
+                                    <Icon name="message-circle" size={48} className="text-green-500 mx-auto mb-6" /><h3 className="text-2xl font-black text-green-800 mb-6">Tham gia cộng đồng Zalo</h3>
+                                    <a href={ZALO_LINK} target="_blank" className="inline-flex items-center gap-3 bg-green-500 text-white px-10 py-5 rounded-full font-black text-xl shadow-xl hover:bg-green-600 transition-all">Vào nhóm ngay <Icon name="external-link" size={20} /></a>
+                                </div>
+                            </div>
+                        );
+                    case 'admin':
+                        return (
+                            <div className="flex-1 flex flex-col animate-fade-in">
+                                <div className="p-8 bg-white border-b flex justify-between items-center shadow-sm"><h2 className="text-2xl font-black text-green-700">Admin GreenPath</h2><button onClick={() => setView('home')} className="w-12 h-12 rounded-2xl bg-red-50 text-red-500 flex items-center justify-center"><Icon name="log-out" size={20} /></button></div>
+                                <div className="p-8 flex-1 max-w-6xl mx-auto w-full space-y-6">
+                                    <div className="relative"><Icon name="search" className="absolute left-6 top-1/2 -translate-y-1/2 text-green-300" size={20} /><input className="w-full pl-14 pr-6 py-5 bg-white border-2 border-green-50 rounded-3xl font-bold text-green-800 outline-none focus:border-green-500 transition-all" placeholder="Tìm kiếm học sinh..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} /></div>
+                                    <div className="space-y-4 pb-20">
+                                        {data.filter(r => r.name?.toLowerCase().includes(searchTerm.toLowerCase())).map(r => (
+                                            <div key={r.id} className="p-6 bg-white rounded-[2rem] border border-green-50 flex items-center justify-between shadow-sm text-left">
+                                                <div>
+                                                    <h4 className="text-lg font-black text-green-800">{r.name}</h4>
+                                                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px] font-bold text-gray-400 uppercase mt-1">
+                                                        <span>{r.phone}</span>
+                                                        <span>{r.school}</span>
+                                                        <span className="text-green-600">{r.time}</span>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-4">
+                                                    <div className="text-right">
+                                                        <div className="text-[10px] font-black text-green-500">{Object.entries(r.scores || {}).sort((a, b) => b[1] - a[1])[0]?.[0]}</div>
+                                                        <div className="text-xs font-bold text-gray-300">{r.timestamp?.toDate().toLocaleDateString('vi-VN')}</div>
+                                                    </div>
+                                                    <button onClick={async () => { if (confirm("Xóa bản ghi này?")) { await window.fb.deleteDoc(window.fb.doc(window.fb.db, 'artifacts', window.fb.appId, 'public', 'data', 'registrations', r.id)); } }} className="w-10 h-10 text-gray-300 hover:text-red-500"><Icon name="trash-2" size={18} /></button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                }
+            };
+
+            return (
+                <div className="min-h-screen flex flex-col">
+                    {view !== 'admin' && <Header />}
+                    {renderContent()}
+                    <AdminLoginModal />
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+
+</html>
